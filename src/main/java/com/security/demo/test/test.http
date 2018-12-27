@@ -1,0 +1,3 @@
+GET http://api.map.baidu.com/geocoder/v2/?address=承德市平泉县排杖子村&output=json&ak=42xRjRVDlIy1gzPYBIHobmN89ihubMxz
+
+###
