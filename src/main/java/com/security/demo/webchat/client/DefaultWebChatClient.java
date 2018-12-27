@@ -21,6 +21,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.time.temporal.ChronoField;
 import java.util.Map;
 
 public class DefaultWebChatClient implements WebChatClient {
@@ -88,7 +89,7 @@ public class DefaultWebChatClient implements WebChatClient {
 
         return Mono.zip(pageUrlMono, responseMono)
                 .map(s -> WebChatRequest.builder().nonceStr(nonceString.nonceStr())
-                        .timestamp(timestamp.timestamp()).url(s.getT1())
+                        .timestamp(timestamp.timestamp().get(ChronoField.INSTANT_SECONDS)).url(s.getT1())
                         .jsTicket(s.getT2()).appId(appId).build())
                 .flatMap(WebChatDigestSign::digestSign);
     }
@@ -112,7 +113,7 @@ public class DefaultWebChatClient implements WebChatClient {
         private String appId;
         private String jsTicket;
         private String nonceStr;
-        private Instant timestamp;
+        private long timestamp;
         private String url;
     }
 }

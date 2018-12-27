@@ -13,7 +13,7 @@ public class WebChatDto {
     private String appId;
 
     //生成签名的时间戳
-    private Instant timeStamp;
+    private long timeStamp;
 
     //随即字符串
     private String noncestr;
