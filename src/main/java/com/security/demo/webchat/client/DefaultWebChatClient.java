@@ -56,7 +56,7 @@ public class DefaultWebChatClient implements WebChatClient {
     @Override
     public Mono<WebChatDto> toWebChatDto(String pageUrl) {
         return webClient.get()
-                .uri(getTicketUrl())
+                .uri(properties.getTicketUrl())
                 .accept(MediaType.APPLICATION_JSON_UTF8)
                 .exchange()
                 .flatMap(response -> {
@@ -70,11 +70,6 @@ public class DefaultWebChatClient implements WebChatClient {
                     }
                     return webChatSign(response, pageUrl);
                 });
-    }
-
-    private String getTicketUrl(){
-        String ticketUrl = properties.getTicketUrl();
-        return ticketUrl;
     }
 
 

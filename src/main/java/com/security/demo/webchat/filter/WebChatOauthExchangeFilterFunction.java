@@ -43,10 +43,9 @@ public class WebChatOauthExchangeFilterFunction implements ExchangeFilterFunctio
 
 
     private ClientRequest uri(ClientRequest request, OAuth2AccessTokenResponse tokenResponse) {
-        ClientRequest build = ClientRequest.from(request)
+        return ClientRequest.from(request)
                 .url(computedUrl(request, tokenResponse))
                 .build();
-        return build;
     }
 
 
