@@ -84,7 +84,7 @@ public class DefaultWebChatClient implements WebChatClient {
 
         return Mono.zip(pageUrlMono, responseMono)
                 .map(s -> WebChatRequest.builder().nonceStr(nonceString.nonceStr())
-                        .timestamp(timestamp.timestamp().get(ChronoField.INSTANT_SECONDS)).url(s.getT1())
+                        .timestamp(timestamp.timestamp().getLong(ChronoField.INSTANT_SECONDS)).url(s.getT1())
                         .jsTicket(s.getT2()).appId(appId).build())
                 .flatMap(WebChatDigestSign::digestSign);
     }
