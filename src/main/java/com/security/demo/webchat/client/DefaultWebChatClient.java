@@ -83,7 +83,7 @@ public class DefaultWebChatClient implements WebChatClient {
     public Mono<WebChatDto> toWebChatDto(String pageUrl) {
         Cache cache = getCache(WebChatParameterNames.WEB_CHAT_VALUE_CACHE);
         return Mono.justOrEmpty(cache.get(pageUrl, WebChatCache.class))
-                .filter(webChatCache -> Objects.nonNull(webChatCache) && webChatCache.getExpireTime().isAfter(Instant.now()))
+                .filter(this::filterWhen)
                 .switchIfEmpty(fromCacheTicket(pageUrl))
                 .switchIfEmpty(Mono.defer(() -> trendsDto(pageUrl)))
                 .map(WebChatCache::getValue)
@@ -95,7 +95,7 @@ public class DefaultWebChatClient implements WebChatClient {
         Cache cache = getCache(WebChatParameterNames.TICKET_VALUE_CACHE);
         return Mono.defer(() ->
                 Mono.justOrEmpty(cache.get(WebChatParameterNames.TICKET_JSON_NAME, WebChatCache.class))
-                        .filter(webChatCache -> Objects.nonNull(webChatCache) && webChatCache.getExpireTime().isAfter(Instant.now()))
+                        .filter(this::filterWhen)
                         .flatMap(webChatCache ->
                                 webChatSign(Mono.fromCallable(() ->
                                                 buildContext(webChatCache.getValue(), webChatCache.getExpireTime().getLong(ChronoField.INSTANT_SECONDS)))
@@ -179,6 +179,11 @@ public class DefaultWebChatClient implements WebChatClient {
 
     private Context buildContext(String ticket, long expire) {
         return Context.of(WebChatParameterNames.TICKET_JSON_NAME, ticket, WebChatParameterNames.EXPIRES_IN, expire);
+    }
+
+
+    private boolean filterWhen(WebChatCache webChatCache){
+        return Objects.nonNull(webChatCache) && webChatCache.getExpireTime().isAfter(Instant.now());
     }
 
 
