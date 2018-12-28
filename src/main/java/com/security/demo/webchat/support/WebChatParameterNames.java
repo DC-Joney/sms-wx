@@ -23,4 +23,18 @@ public interface WebChatParameterNames {
 
     String TICKET_JSON_NAME = "ticket";
 
+
+    String TICKET_VALUE_CACHE = "ticket_cache";
+
+
+    String WEB_CHAT_VALUE_CACHE = "ticket_cache";
+
+
+
+
+
+    String ACCESS_TOKEN_VALUE_CACHE  = "access_token_value_cache";
+
+    String EXPIRES_IN  = "expires_in";
+
 }

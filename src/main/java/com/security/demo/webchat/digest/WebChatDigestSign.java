@@ -4,12 +4,14 @@ import com.security.demo.webchat.WebChatDto;
 import com.security.demo.webchat.client.DefaultWebChatClient.WebChatRequest;
 import lombok.extern.log4j.Log4j2;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Formatter;
-import java.util.UUID;
 
 @Log4j2
 public class WebChatDigestSign {
@@ -59,11 +61,4 @@ public class WebChatDigestSign {
                 }, Formatter::close);
     }
 
-    private static String create_nonce_str() {
-        return UUID.randomUUID().toString();
-    }
-
-    private static String create_timestamp() {
-        return Long.toString(System.currentTimeMillis() / 1000);
-    }
 }
