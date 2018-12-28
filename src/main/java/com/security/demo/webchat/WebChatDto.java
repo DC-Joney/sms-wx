@@ -3,7 +3,9 @@ package com.security.demo.webchat;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoField;
 
 @Data
 @Builder
@@ -21,4 +23,10 @@ public class WebChatDto {
     //签名
     private String signature;
 
+    private long expireTime;
+
+    public long getExpireTime() {
+        return !Instant.ofEpochSecond(expireTime).isAfter(Instant.now()) ? Instant.EPOCH.getEpochSecond() :
+                Duration.ofSeconds(expireTime).minusSeconds(Instant.now().getEpochSecond()).getSeconds();
+    }
 }

@@ -1,5 +1,7 @@
 package com.security.demo.webchat;
 
+import com.security.demo.webchat.cache.DefaultWebChatCacheOperation;
+import com.security.demo.webchat.cache.WebChatCacheOperation;
 import com.security.demo.webchat.client.WebChatClient;
 import com.security.demo.webchat.filter.WebChatAccessTokenResponseClient;
 import com.security.demo.webchat.filter.WebChatOauthExchangeFilterFunction;
@@ -8,11 +10,12 @@ import com.security.demo.webchat.support.WebChatAuthenticationMethod;
 import com.security.demo.webchat.support.WebChatParameterNames;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.context.annotation.Role;
 import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.ReactiveOAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -49,6 +52,10 @@ public class WebChatConfiguration {
         return new WebChatAccessTokenResponseClient();
     }
 
+
+
+
+
     @Bean
     public WebChatOauthExchangeFilterFunction webChatOauthExchangeFilterFunction(ReactiveClientRegistrationRepository registrationRepository){
         WebChatOauthExchangeFilterFunction filterFunction = new WebChatOauthExchangeFilterFunction(reactiveOAuth2AccessTokenResponseClient(),
@@ -64,9 +71,19 @@ public class WebChatConfiguration {
         return WebClient.builder().filter(webChatOauthExchangeFilterFunction(registrationRepository)).build();
     }
 
+    @Bean(WebChatParameterNames.DEFAULT_WEB_CHAT_CACHE_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    @ConditionalOnMissingBean
+    public WebChatCacheOperation defaultWebChatCacheOperation(){
+        return new DefaultWebChatCacheOperation();
+    }
+
+
     @Bean
     @ConditionalOnMissingBean
     public WebChatClient webChatClient(@Qualifier(WebChatParameterNames.DEFAULT_WEBCLIENT_BEAN_NAME) WebClient webClient){
-        return WebChatClient.webClient(webClient).webChatProperties(properties).build();
+        return WebChatClient
+                .webClient(webClient)
+                .webChatProperties(properties).build();
     }
 }

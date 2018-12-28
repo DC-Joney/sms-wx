@@ -6,7 +6,6 @@ import com.security.demo.webchat.digest.WebChatNonceString;
 import com.security.demo.webchat.digest.WebChatTimestamp;
 import com.security.demo.webchat.properties.WebChatProperties;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.interceptor.CacheOperation;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -19,10 +18,6 @@ public interface WebChatClient{
     Mono<WebChatDto> toWebChatDto(String pageUrl);
 
     WebChatClient appId(String appId);
-
-    WebChatClient cacheOperation(WebChatCacheOperation operation);
-
-    WebChatClient cacheManager(CacheManager cacheManager);
 
     interface Builder{
 

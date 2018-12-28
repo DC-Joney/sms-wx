@@ -1,22 +1,19 @@
 package com.security.demo.webchat.filter;
 
+import com.security.demo.webchat.exception.AuthenticationMethodNotSupport;
 import com.security.demo.webchat.support.WebChatAuthenticationMethod;
 import com.security.demo.webchat.support.WebChatParameterNames;
-import com.security.demo.webchat.exception.AuthenticationMethodNotSupport;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.ReactiveOAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
-import java.util.function.Consumer;
 
 public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> {
 
@@ -36,7 +33,6 @@ public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTok
                     .get()
                     .uri(tokenUrl)
                     .accept(MediaType.APPLICATION_JSON)
-                    .headers(headers(clientRegistration))
                     .exchange()
                     .flatMap(response -> {
                         if (!response.statusCode().is2xxSuccessful()) {
@@ -49,28 +45,11 @@ public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTok
                             );
                         }
                         return response.body(WebChatOAuth2BodyExtractors.oauth2AccessTokenResponse());
-                    })
-                    .map(response -> {
-                        if (response.getAccessToken().getScopes().isEmpty()) {
-                            response = OAuth2AccessTokenResponse.withResponse(response)
-                                    .scopes(authorizationGrantRequest.getClientRegistration().getScopes())
-                                    .build();
-                        }
-                        return response;
                     });
         });
     }
 
 
-    private Consumer<HttpHeaders> headers(ClientRegistration clientRegistration) {
-        return headers -> {
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBasicAuth(clientRegistration.getClientId(), clientRegistration.getClientSecret());
-            if (ClientAuthenticationMethod.BASIC.equals(clientRegistration.getClientAuthenticationMethod())) {
-                headers.setBasicAuth(clientRegistration.getClientId(), clientRegistration.getClientSecret());
-            }
-        };
-    }
 
     private static String url(OAuth2ClientCredentialsGrantRequest authorizationGrantRequest) {
         ClientRegistration clientRegistration = authorizationGrantRequest.getClientRegistration();

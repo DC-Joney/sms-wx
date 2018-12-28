@@ -1,7 +1,6 @@
 package com.security.demo.webchat.client;
 
 import com.security.demo.webchat.WebChatDto;
-import com.security.demo.webchat.cache.DefaultWebChatCachingSupport;
 import com.security.demo.webchat.cache.WebChatCache;
 import com.security.demo.webchat.cache.WebChatCacheOperation;
 import com.security.demo.webchat.digest.WebChatDigestSign;
@@ -15,8 +14,8 @@ import com.security.demo.webchat.utils.JsonTokens;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpInputMessage;
@@ -28,6 +27,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoField;
 import java.util.Map;
@@ -47,7 +47,7 @@ public class DefaultWebChatClient implements WebChatClient {
 
     private String appId;
 
-    private WebChatCacheOperation cacheOperation;
+    private WebChatCacheOperation webChatCacheOperation;
 
     DefaultWebChatClient(WebChatProperties properties, WebClient webClient,
                          WebChatNonceString nonceString, WebChatTimestamp timestamp) {
@@ -57,20 +57,11 @@ public class DefaultWebChatClient implements WebChatClient {
         this.timestamp = timestamp;
         this.properties = properties;
         this.appId = properties.getClientId();
-        this.cacheOperation = DefaultWebChatCachingSupport.getSharedInstance().getCacheOperation();
     }
 
-
-    @Override
-    public WebChatClient cacheOperation(WebChatCacheOperation operation) {
-        this.cacheOperation = operation;
-        return this;
-    }
-
-    @Override
-    public WebChatClient cacheManager(CacheManager cacheManager) {
-        this.cacheOperation.setCacheManager(cacheManager);
-        return this;
+    @Autowired(required = false)
+    public void setWebChatCacheOperation(WebChatCacheOperation webChatCacheOperation) {
+        this.webChatCacheOperation = webChatCacheOperation;
     }
 
     @Override
@@ -86,7 +77,10 @@ public class DefaultWebChatClient implements WebChatClient {
                 .filter(this::filterWhen)
                 .switchIfEmpty(fromCacheTicket(pageUrl))
                 .switchIfEmpty(Mono.defer(() -> trendsDto(pageUrl)))
-                .map(WebChatCache::getValue)
+                .map(webChatCache -> {
+                    webChatCache.<WebChatDto>getValue().setExpireTime(webChatCache.getExpireTime().getEpochSecond());
+                    return  webChatCache.getValue();
+                })
                 .cast(WebChatDto.class);
     }
 
@@ -98,7 +92,7 @@ public class DefaultWebChatClient implements WebChatClient {
                         .filter(this::filterWhen)
                         .flatMap(webChatCache ->
                                 webChatSign(Mono.fromCallable(() ->
-                                                buildContext(webChatCache.getValue(), webChatCache.getExpireTime().getLong(ChronoField.INSTANT_SECONDS)))
+                                                buildContext(webChatCache.getValue(), webChatCache.getExpireTime()))
                                         , pageUrl))
         );
     }
@@ -133,12 +127,12 @@ public class DefaultWebChatClient implements WebChatClient {
 
         Mono<Context> contextMono = Mono.from(publisher)
                 .switchIfEmpty(Mono.defer(() -> Mono.error(new TicketNotFoundException("The request of ticket is fail"))))
-                .cache();
+                .cache(Duration.ofSeconds(10));
 
         return Mono.zip(pageUrlMono, contextMono)
                 .flatMap(tuple2 -> WebChatDigestSign.digestSign(buildRequest(tuple2)))
                 .zipWith(contextMono, (webChatDto, context) -> {
-                    WebChatCache webChatCache = new WebChatCache(webChatDto, context.<Long>get(WebChatParameterNames.EXPIRES_IN));
+                    WebChatCache webChatCache = new WebChatCache(webChatDto, context.get(WebChatParameterNames.EXPIRES_IN));
                     cache.put(pageUrl, webChatCache);
                     return webChatCache;
                 });
@@ -169,15 +163,17 @@ public class DefaultWebChatClient implements WebChatClient {
                             JSONObject jsonObject = new JSONObject(json);
                             String ticket = JsonTokens.parse(jsonObject, WebChatParameterNames.TICKET_JSON_NAME);
                             long expire = JsonTokens.expire(jsonObject, WebChatParameterNames.EXPIRES_IN);
-                            WebChatCache webChatCache = new WebChatCache(ticket, expire);
-                            cache.put(WebChatParameterNames.TICKET_JSON_NAME, webChatCache);
+                            WebChatCache webChatCache = new WebChatCache(ticket, Instant.now().plus(Duration.ofSeconds(expire)));
+                            Cache.ValueWrapper valueWrapper = cache.putIfAbsent(WebChatParameterNames.TICKET_JSON_NAME, webChatCache);
                             log.info("ticket : " + ticket);
-                            return buildContext(ticket, expire);
+                            Optional.ofNullable(valueWrapper)
+                                    .ifPresent(val-> log.info("过期Ticket为 : " + val.get()));
+                            return buildContext(ticket, webChatCache.getExpireTime());
                         });
     }
 
 
-    private Context buildContext(String ticket, long expire) {
+    private Context buildContext(String ticket, Instant expire) {
         return Context.of(WebChatParameterNames.TICKET_JSON_NAME, ticket, WebChatParameterNames.EXPIRES_IN, expire);
     }
 
@@ -189,7 +185,7 @@ public class DefaultWebChatClient implements WebChatClient {
 
     private Cache getCache(String cacheName) {
         return Optional.ofNullable(cacheName)
-                .map(name -> cacheOperation.getCacheManager().getCache(name))
+                .map(name -> webChatCacheOperation.cacheManager().getCache(name))
                 .orElseThrow(() -> new RuntimeException("The CacheManager cache must not be null"));
     }
 

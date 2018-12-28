@@ -75,9 +75,6 @@ public class WebChatAccessTokenResponseBodyExtractor implements BodyExtractor<Mo
         }
         long expiresIn = accessToken.getLifetime();
 
-        Set<String> scopes = accessToken.getScope() == null ?
-                Collections.emptySet() : new LinkedHashSet<>(accessToken.getScope().toStringList());
-
         String refreshToken = null;
         if (accessTokenResponse.getTokens().getRefreshToken() != null) {
             refreshToken = accessTokenResponse.getTokens().getRefreshToken().getValue();
@@ -88,7 +85,6 @@ public class WebChatAccessTokenResponseBodyExtractor implements BodyExtractor<Mo
         return OAuth2AccessTokenResponse.withToken(accessToken.getValue())
                 .tokenType(accessTokenType)
                 .expiresIn(expiresIn)
-                .scopes(scopes)
                 .refreshToken(refreshToken)
                 .additionalParameters(additionalParameters)
                 .build();

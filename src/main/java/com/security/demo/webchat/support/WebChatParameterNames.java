@@ -30,11 +30,11 @@ public interface WebChatParameterNames {
     String WEB_CHAT_VALUE_CACHE = "ticket_cache";
 
 
+    String ACCESS_TOKEN_VALUE_CACHE = "access_token_value_cache";
+
+    String EXPIRES_IN = "expires_in";
 
 
-
-    String ACCESS_TOKEN_VALUE_CACHE  = "access_token_value_cache";
-
-    String EXPIRES_IN  = "expires_in";
+    String DEFAULT_WEB_CHAT_CACHE_NAME = "intervalWebChatCacheOperationName";
 
 }

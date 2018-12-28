@@ -1,6 +1,7 @@
 package com.security.demo.webchat.cache;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.time.Duration;
@@ -13,13 +14,14 @@ public class WebChatCache {
 
     private Object value;
 
+    @Setter
     private Instant expireTime;
 
-    public WebChatCache(Object value, long refreshTime){
+    public WebChatCache(Object value, Instant refreshTime){
 
         this.value = Objects.requireNonNull(value);
 
-        this.expireTime = Instant.now().plus(Duration.ofSeconds(refreshTime - 100));
+        this.expireTime = refreshTime.minus(Duration.ofSeconds(10));
 
     }
 
