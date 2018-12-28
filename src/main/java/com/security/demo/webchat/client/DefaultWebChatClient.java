@@ -19,6 +19,7 @@ import org.springframework.cache.Cache;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpInputMessage;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -73,7 +74,8 @@ public class DefaultWebChatClient implements WebChatClient {
     @Override
     public Mono<WebChatDto> toWebChatDto(String pageUrl) {
         Cache cache = getCache(WebChatParameterNames.WEB_CHAT_VALUE_CACHE);
-        return Mono.justOrEmpty(cache.get(pageUrl, WebChatCache.class))
+        String cacheKey = DigestUtils.md5DigestAsHex((appId + "," + pageUrl).getBytes());
+        return Mono.justOrEmpty(cache.get(cacheKey, WebChatCache.class))
                 .filter(this::filterWhen)
                 .switchIfEmpty(fromCacheTicket(pageUrl))
                 .switchIfEmpty(Mono.defer(() -> trendsDto(pageUrl)))
@@ -121,19 +123,20 @@ public class DefaultWebChatClient implements WebChatClient {
     private Mono<WebChatCache> webChatSign(Mono<Context> publisher, String pageUrl) {
 
         Cache cache = getCache(WebChatParameterNames.WEB_CHAT_VALUE_CACHE);
+        String cacheKey = DigestUtils.md5DigestAsHex((appId + "," + pageUrl).getBytes());
 
         Mono<String> pageUrlMono = Mono.justOrEmpty(pageUrl)
-                .switchIfEmpty(Mono.defer(() -> Mono.error(new PageUrlEmpty("The page url not empty"))));
+                .switchIfEmpty(Mono.error(new PageUrlEmpty("The page url not empty")));
 
         Mono<Context> contextMono = Mono.from(publisher)
-                .switchIfEmpty(Mono.defer(() -> Mono.error(new TicketNotFoundException("The request of ticket is fail"))))
+                .switchIfEmpty(Mono.error(new TicketNotFoundException("The request of ticket is fail")))
                 .cache(Duration.ofSeconds(10));
 
         return Mono.zip(pageUrlMono, contextMono)
                 .flatMap(tuple2 -> WebChatDigestSign.digestSign(buildRequest(tuple2)))
                 .zipWith(contextMono, (webChatDto, context) -> {
                     WebChatCache webChatCache = new WebChatCache(webChatDto, context.get(WebChatParameterNames.EXPIRES_IN));
-                    cache.put(pageUrl, webChatCache);
+                    cache.put(cacheKey, webChatCache);
                     return webChatCache;
                 });
     }
