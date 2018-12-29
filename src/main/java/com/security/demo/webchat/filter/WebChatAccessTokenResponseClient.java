@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
@@ -25,8 +26,6 @@ public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTok
     public Mono<OAuth2AccessTokenResponse> getTokenResponse(OAuth2ClientCredentialsGrantRequest authorizationGrantRequest) {
         return Mono.defer(() -> {
 
-            ClientRegistration clientRegistration = authorizationGrantRequest.getClientRegistration();
-
             String tokenUrl = url(authorizationGrantRequest);
 
             return this.webClient
@@ -36,7 +35,6 @@ public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTok
                     .exchange()
                     .flatMap(response -> {
                         if (!response.statusCode().is2xxSuccessful()) {
-                            // extract the contents of this into a method named oauth2AccessTokenResponse but has an argument for the response
                             throw WebClientResponseException.create(response.rawStatusCode(),
                                     "Cannot get token, expected 2xx HTTP Status code",
                                     null,
@@ -54,9 +52,10 @@ public class WebChatAccessTokenResponseClient implements ReactiveOAuth2AccessTok
     private static String url(OAuth2ClientCredentialsGrantRequest authorizationGrantRequest) {
         ClientRegistration clientRegistration = authorizationGrantRequest.getClientRegistration();
         AuthorizationGrantType grantType = authorizationGrantRequest.getGrantType();
+
         return Optional.of(clientRegistration)
                 .filter(registration -> WebChatAuthenticationMethod.GET.equals(registration.getClientAuthenticationMethod()))
-                .map(registration -> WebChatAuthenticationMethod.urlBuilder(()-> registration.getProviderDetails().getTokenUri())
+                .map(registration -> WebChatAuthenticationMethod.urlBuilder(registration.getProviderDetails().getTokenUri())
                         .addParamter(WebChatParameterNames.GRANT_TYPE, grantType.getValue()
                                 .substring(0,grantType.getValue().length() - 1))
                         .addParamter(WebChatParameterNames.APP_ID, registration.getClientId())

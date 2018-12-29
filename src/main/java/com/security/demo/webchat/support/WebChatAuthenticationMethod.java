@@ -7,24 +7,23 @@ import org.springframework.util.StringUtils;
 import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 public interface WebChatAuthenticationMethod {
 
     ClientAuthenticationMethod GET = new ClientAuthenticationMethod("get");
 
 
-    static URLBuilder urlBuilder(Supplier<String> baseUrl) {
+    static URLBuilder urlBuilder(String baseUrl) {
         return new URLBuilder(nonNull(baseUrl), true);
     }
 
 
     static URLBuilder urlBuilder(URI baseUrl) {
-        return new URLBuilder(nonNull(baseUrl)::toString, true);
+        return new URLBuilder(nonNull(baseUrl).toString(), true);
     }
 
 
-    static URLBuilder urlBuilder(Supplier<String> baseUrl, boolean baseState) {
+    static URLBuilder urlBuilder(String baseUrl, boolean baseState) {
         return new URLBuilder(nonNull(baseUrl), baseState);
     }
 
@@ -45,10 +44,10 @@ public interface WebChatAuthenticationMethod {
         //是否为baseUrl
         private final boolean baseState;
 
-        private URLBuilder(Supplier<String> baseUrl, boolean baseState) {
+        private URLBuilder(String baseUrl, boolean baseState) {
             this.baseState = baseState;
             this.beginState = true;
-            stringBuffer.append(computeBaseUrl(baseUrl.get()));
+            stringBuffer.append(computeBaseUrl(baseUrl));
 
         }
 

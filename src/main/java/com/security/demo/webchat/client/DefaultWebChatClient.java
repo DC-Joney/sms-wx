@@ -78,10 +78,10 @@ public class DefaultWebChatClient implements WebChatClient {
         return Mono.justOrEmpty(cache.get(cacheKey, WebChatCache.class))
                 .filter(this::filterWhen)
                 .switchIfEmpty(fromCacheTicket(pageUrl))
-                .switchIfEmpty(Mono.defer(() -> trendsDto(pageUrl)))
+                .switchIfEmpty(trendsDto(pageUrl))
                 .map(webChatCache -> {
                     webChatCache.<WebChatDto>getValue().setExpireTime(webChatCache.getExpireTime().getEpochSecond());
-                    return  webChatCache.getValue();
+                    return webChatCache.getValue();
                 })
                 .cast(WebChatDto.class);
     }
@@ -102,23 +102,25 @@ public class DefaultWebChatClient implements WebChatClient {
 
     private Mono<WebChatCache> trendsDto(String pageUrl) {
         log.info("The ticket is not hit the cache");
-        return webClient.get()
-                .uri(properties.getTicketUrl())
-                .accept(MediaType.APPLICATION_JSON_UTF8)
-                .exchange()
-                .flatMap(response -> {
-                    if (!response.statusCode().is2xxSuccessful()) {
-                        throw WebClientResponseException.create(response.rawStatusCode(),
-                                "Cannot get token, expected 2xx HTTP Status code",
-                                null,
-                                null,
-                                null
-                        );
-                    }
-                    return webChatSign(response.body(bodyExtractor()), pageUrl);
-                });
-    }
 
+        return Mono.defer(() ->
+                webClient.get()
+                        .uri(properties.getTicketUrl())
+                        .accept(MediaType.APPLICATION_JSON_UTF8)
+                        .exchange()
+                        .flatMap(response -> {
+                            if (!response.statusCode().is2xxSuccessful()) {
+                                throw WebClientResponseException.create(response.rawStatusCode(),
+                                        "Cannot get token, expected 2xx HTTP Status code",
+                                        null,
+                                        null,
+                                        null
+                                );
+                            }
+                            return webChatSign(response.body(bodyExtractor()), pageUrl);
+                        })
+        );
+    }
 
     private Mono<WebChatCache> webChatSign(Mono<Context> publisher, String pageUrl) {
 
@@ -158,6 +160,7 @@ public class DefaultWebChatClient implements WebChatClient {
 
         ParameterizedTypeReference<Map<String, Object>> type = new ParameterizedTypeReference<Map<String, Object>>() {};
         BodyExtractor<Mono<Map<String, Object>>, ReactiveHttpInputMessage> delegate = BodyExtractors.toMono(type);
+
         Cache cache = getCache(WebChatParameterNames.TICKET_VALUE_CACHE);
 
         return (inputMessage, context) ->
@@ -170,7 +173,7 @@ public class DefaultWebChatClient implements WebChatClient {
                             Cache.ValueWrapper valueWrapper = cache.putIfAbsent(WebChatParameterNames.TICKET_JSON_NAME, webChatCache);
                             log.info("ticket : " + ticket);
                             Optional.ofNullable(valueWrapper)
-                                    .ifPresent(val-> log.info("过期Ticket为 : " + val.get()));
+                                    .ifPresent(val -> log.info("过期Ticket为 : " + val.get()));
                             return buildContext(ticket, webChatCache.getExpireTime());
                         });
     }
@@ -181,7 +184,7 @@ public class DefaultWebChatClient implements WebChatClient {
     }
 
 
-    private boolean filterWhen(WebChatCache webChatCache){
+    private boolean filterWhen(WebChatCache webChatCache) {
         return Objects.nonNull(webChatCache) && webChatCache.getExpireTime().isAfter(Instant.now());
     }
 

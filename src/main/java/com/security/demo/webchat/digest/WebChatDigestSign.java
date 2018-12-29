@@ -4,9 +4,6 @@ import com.security.demo.webchat.WebChatDto;
 import com.security.demo.webchat.client.DefaultWebChatClient.WebChatRequest;
 import lombok.extern.log4j.Log4j2;
 import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -18,8 +15,11 @@ public class WebChatDigestSign {
 
     public static Mono<WebChatDto> digestSign(WebChatRequest request) {
         return Mono.justOrEmpty(request)
-                .map(WebChatDigestSign::signStr)
-                .flatMap(WebChatDigestSign::digestStr)
+                .switchIfEmpty(Mono.defer(()-> Mono.error(new NullPointerException("The web_chat request must not be null!!"))))
+                .transform(requestMono -> requestMono
+                        .map(WebChatDigestSign::signStr)
+                        .map(WebChatDigestSign::digestStr)
+                )
                 .zipWith(Mono.just(request), WebChatDigestSign::webChatDto);
 
     }
@@ -34,14 +34,15 @@ public class WebChatDigestSign {
 
     }
 
-    private static Mono<String> digestStr(String signStr) {
+    private static String digestStr(String signStr) {
         try {
             MessageDigest crypt = MessageDigest.getInstance("SHA-1");
             crypt.reset();
             crypt.update(signStr.getBytes(StandardCharsets.UTF_8));
-            return Mono.fromDirect(byteToHexMono(crypt.digest()));
+            return byteToHexMono(crypt.digest());
         } catch (NoSuchAlgorithmException e) {
-            return Mono.error(e);
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -51,14 +52,21 @@ public class WebChatDigestSign {
                 + request.getTimestamp() + "&url=" + request.getUrl();
     }
 
-    private static Mono<String> byteToHexMono(final byte[] hash) {
-        return Mono.using(Formatter::new,
-                formatter -> {
-                    for (byte b : hash) {
-                        formatter.format("%02x", b);
-                    }
-                    return Mono.justOrEmpty(formatter.toString());
-                }, Formatter::close);
+    private static String byteToHexMono(final byte[] hash) {
+        try (Formatter formatter = new Formatter()) {
+            for (byte b : hash) {
+                formatter.format("%02x", b);
+            }
+            return formatter.toString();
+        }
+
+//        return Mono.using(Formatter::new,
+//                formatter -> {
+//                    for (byte b : hash) {
+//                        formatter.format("%02x", b);
+//                    }
+//                    return Mono.justOrEmpty(formatter.toString());
+//                }, Formatter::close);
     }
 
 }
